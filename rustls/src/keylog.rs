@@ -1,8 +1,8 @@
 use std::env;
 use std::fs::{File, OpenOptions};
-use std::path::Path;
 use std::io;
 use std::io::Write;
+use std::path::Path;
 use std::sync::Mutex;
 
 #[cfg(feature = "logging")]
@@ -20,7 +20,7 @@ use crate::log::warn;
 ///
 /// See `KeyLogFile` that implements the standard `SSLKEYLOGFILE`
 /// environment variable behaviour.
-pub trait KeyLog : Send + Sync {
+pub trait KeyLog: Send + Sync {
     /// Log the given `secret`.  `client_random` is provided for
     /// session identification.  `label` describes precisely what
     /// `secret` means:
@@ -48,7 +48,9 @@ pub trait KeyLog : Send + Sync {
     /// If `will_log` returns true then `log` will be called with the secret.
     /// Otherwise, `log` will not be called for the secret. This is a
     /// performance optimization.
-    fn will_log(&self, _label: &str) -> bool { true }
+    fn will_log(&self, _label: &str) -> bool {
+        true
+    }
 }
 
 /// KeyLog that does exactly nothing.
@@ -57,7 +59,9 @@ pub struct NoKeyLog;
 impl KeyLog for NoKeyLog {
     fn log(&self, _: &str, _: &[u8], _: &[u8]) {}
     #[inline]
-    fn will_log(&self, _label: &str) -> bool { false }
+    fn will_log(&self, _label: &str) -> bool {
+        false
+    }
 }
 
 // Internal mutable state for KeyLogFile
@@ -80,10 +84,7 @@ impl KeyLogFileInner {
         };
 
         #[cfg_attr(not(feature = "logging"), allow(unused_variables))]
-        let file = match OpenOptions::new()
-            .append(true)
-            .create(true)
-            .open(path) {
+        let file = match OpenOptions::new().append(true).create(true).open(path) {
             Ok(f) => Some(f),
             Err(e) => {
                 warn!("unable to create key log file {:?}: {}", path, e);
@@ -99,7 +100,9 @@ impl KeyLogFileInner {
 
     fn try_write(&mut self, label: &str, client_random: &[u8], secret: &[u8]) -> io::Result<()> {
         let mut file = match self.file {
-            None => { return Ok(()); }
+            None => {
+                return Ok(());
+            }
             Some(ref f) => f,
         };
 
@@ -139,10 +142,13 @@ impl KeyLogFile {
 impl KeyLog for KeyLogFile {
     fn log(&self, label: &str, client_random: &[u8], secret: &[u8]) {
         #[cfg_attr(not(feature = "logging"), allow(unused_variables))]
-        match self.0.lock()
+        match self
+            .0
+            .lock()
             .unwrap()
-            .try_write(label, client_random, secret) {
-            Ok(()) => {},
+            .try_write(label, client_random, secret)
+        {
+            Ok(()) => {}
             Err(e) => {
                 warn!("error writing to key log file: {}", e);
             }
@@ -150,7 +156,7 @@ impl KeyLog for KeyLogFile {
     }
 }
 
-#[cfg(all(test, target_os="linux"))]
+#[cfg(all(test, target_os = "linux"))]
 mod test {
     use super::*;
 
@@ -161,7 +167,9 @@ mod test {
     #[test]
     fn test_env_var_is_not_unicode() {
         init();
-        let mut inner = KeyLogFileInner::new(Err(env::VarError::NotUnicode("/tmp/keylogfileinnertest".into())));
+        let mut inner = KeyLogFileInner::new(Err(env::VarError::NotUnicode(
+            "/tmp/keylogfileinnertest".into(),
+        )));
         assert!(inner.try_write("label", b"random", b"secret").is_ok());
     }
 

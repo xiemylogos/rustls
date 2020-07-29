@@ -1,15 +1,15 @@
-use std::sync::{Arc, Mutex};
 use std::process;
+use std::sync::{Arc, Mutex};
 
 use mio;
 use mio::net::TcpStream;
 
+use std::collections;
+use std::fs;
+use std::io;
+use std::io::{BufReader, Read, Write};
 use std::net::SocketAddr;
 use std::str;
-use std::io;
-use std::fs;
-use std::collections;
-use std::io::{Read, Write, BufReader};
 
 use env_logger;
 
@@ -18,10 +18,10 @@ extern crate serde_derive;
 
 use docopt::Docopt;
 
+use ct_logs;
 use rustls;
 use webpki;
 use webpki_roots;
-use ct_logs;
 
 use rustls::Session;
 
@@ -73,7 +73,11 @@ impl io::Read for TlsClient {
 }
 
 impl TlsClient {
-    fn new(sock: TcpStream, hostname: webpki::DNSNameRef<'_>, cfg: Arc<rustls::ClientConfig>) -> TlsClient {
+    fn new(
+        sock: TcpStream,
+        hostname: webpki::DNSNameRef<'_>,
+        cfg: Arc<rustls::ClientConfig>,
+    ) -> TlsClient {
         TlsClient {
             socket: sock,
             closing: false,
@@ -149,12 +153,16 @@ impl TlsClient {
 
     fn register(&mut self, registry: &mio::Registry) {
         let interest = self.ready_interest();
-        registry.register(&mut self.socket, CLIENT, interest).unwrap();
+        registry
+            .register(&mut self.socket, CLIENT, interest)
+            .unwrap();
     }
 
     fn reregister(&mut self, registry: &mio::Registry) {
         let interest = self.ready_interest();
-        registry.reregister(&mut self.socket, CLIENT, interest).unwrap();
+        registry
+            .reregister(&mut self.socket, CLIENT, interest)
+            .unwrap();
     }
 
     // Use wants_read/wants_write to register for different mio-level
@@ -204,15 +212,15 @@ impl PersistCache {
 
     /// If we have a filename, save the cache contents to it.
     fn save(&self) {
-        use rustls::internal::msgs::codec::Codec;
         use rustls::internal::msgs::base::PayloadU16;
+        use rustls::internal::msgs::codec::Codec;
 
         if self.filename.is_none() {
             return;
         }
 
-        let mut file = fs::File::create(self.filename.as_ref().unwrap())
-            .expect("cannot open cache file");
+        let mut file =
+            fs::File::create(self.filename.as_ref().unwrap()).expect("cannot open cache file");
 
         for (key, val) in self.cache.lock().unwrap().iter() {
             let mut item = Vec::new();
@@ -226,8 +234,8 @@ impl PersistCache {
 
     /// We have a filename, so replace the cache contents from it.
     fn load(&self) {
-        use rustls::internal::msgs::codec::{Codec, Reader};
         use rustls::internal::msgs::base::PayloadU16;
+        use rustls::internal::msgs::codec::{Codec, Reader};
 
         let mut file = match fs::File::open(self.filename.as_ref().unwrap()) {
             Ok(f) => f,
@@ -236,8 +244,7 @@ impl PersistCache {
         let mut data = Vec::new();
         file.read_to_end(&mut data).unwrap();
 
-        let mut cache = self.cache.lock()
-            .unwrap();
+        let mut cache = self.cache.lock().unwrap();
         cache.clear();
         let mut rd = Reader::init(&data);
 
@@ -252,18 +259,14 @@ impl PersistCache {
 impl rustls::StoresClientSessions for PersistCache {
     /// put: insert into in-memory cache, and perhaps persist to disk.
     fn put(&self, key: Vec<u8>, value: Vec<u8>) -> bool {
-        self.cache.lock()
-            .unwrap()
-            .insert(key, value);
+        self.cache.lock().unwrap().insert(key, value);
         self.save();
         true
     }
 
     /// get: from in-memory cache
     fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.cache.lock()
-            .unwrap()
-            .get(key).cloned()
+        self.cache.lock().unwrap().get(key).cloned()
     }
 }
 
@@ -375,7 +378,10 @@ fn lookup_versions(versions: &[String]) -> Vec<rustls::ProtocolVersion> {
         let version = match vname.as_ref() {
             "1.2" => rustls::ProtocolVersion::TLSv1_2,
             "1.3" => rustls::ProtocolVersion::TLSv1_3,
-            _ => panic!("cannot look up version '{}', valid are '1.2' and '1.3'", vname),
+            _ => panic!(
+                "cannot look up version '{}', valid are '1.2' and '1.3'",
+                vname
+            ),
         };
         out.push(version);
     }
@@ -401,7 +407,8 @@ fn load_key_and_cert(config: &mut rustls::ClientConfig, keyfile: &str, certsfile
     let certs = load_certs(certsfile);
     let privkey = load_private_key(keyfile);
 
-    config.set_single_client_cert(certs, privkey)
+    config
+        .set_single_client_cert(certs, privkey)
         .expect("invalid certificate or private key");
 }
 
@@ -413,11 +420,13 @@ mod danger {
     pub struct NoCertificateVerification {}
 
     impl rustls::ServerCertVerifier for NoCertificateVerification {
-        fn verify_server_cert(&self,
-                              _roots: &rustls::RootCertStore,
-                              _presented_certs: &[rustls::Certificate],
-                              _dns_name: webpki::DNSNameRef<'_>,
-                              _ocsp: &[u8]) -> Result<rustls::ServerCertVerified, rustls::TLSError> {
+        fn verify_server_cert(
+            &self,
+            _roots: &rustls::RootCertStore,
+            _presented_certs: &[rustls::Certificate],
+            _dns_name: webpki::DNSNameRef<'_>,
+            _ocsp: &[u8],
+        ) -> Result<rustls::ServerCertVerified, rustls::TLSError> {
             Ok(rustls::ServerCertVerified::assertion())
         }
     }
@@ -426,8 +435,7 @@ mod danger {
 #[cfg(feature = "dangerous_configuration")]
 fn apply_dangerous_options(args: &Args, cfg: &mut rustls::ClientConfig) {
     if args.flag_insecure {
-        cfg
-            .dangerous()
+        cfg.dangerous()
             .set_certificate_verifier(Arc::new(danger::NoCertificateVerification {}));
     }
 }
@@ -457,11 +465,11 @@ fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
 
         let certfile = fs::File::open(&cafile).expect("Cannot open CA file");
         let mut reader = BufReader::new(certfile);
-        config.root_store
-            .add_pem_file(&mut reader)
-            .unwrap();
+        config.root_store.add_pem_file(&mut reader).unwrap();
     } else {
-        config.root_store.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
+        config
+            .root_store
+            .add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
         config.ct_logs = Some(&ct_logs::LOGS);
     }
 
@@ -475,23 +483,28 @@ fn make_config(args: &Args) -> Arc<rustls::ClientConfig> {
 
     let persist = Arc::new(PersistCache::new(&args.flag_cache));
 
-    config.set_protocols(&args.flag_proto
-        .iter()
-        .map(|proto| proto.as_bytes().to_vec())
-        .collect::<Vec<_>>()[..]);
+    config.set_protocols(
+        &args
+            .flag_proto
+            .iter()
+            .map(|proto| proto.as_bytes().to_vec())
+            .collect::<Vec<_>>()[..],
+    );
     config.set_persistence(persist);
     config.set_mtu(&args.flag_mtu);
 
     apply_dangerous_options(args, &mut config);
 
     if args.flag_auth_key.is_some() || args.flag_auth_certs.is_some() {
-        load_key_and_cert(&mut config,
-                          args.flag_auth_key
-                              .as_ref()
-                              .expect("must provide --auth-key with --auth-certs"),
-                          args.flag_auth_certs
-                              .as_ref()
-                              .expect("must provide --auth-certs with --auth-key"));
+        load_key_and_cert(
+            &mut config,
+            args.flag_auth_key
+                .as_ref()
+                .expect("must provide --auth-key with --auth-certs"),
+            args.flag_auth_certs
+                .as_ref()
+                .expect("must provide --auth-certs with --auth-key"),
+        );
     }
 
     Arc::new(config)
@@ -509,9 +522,7 @@ fn main() {
         .unwrap_or_else(|e| e.exit());
 
     if args.flag_verbose {
-        env_logger::Builder::new()
-            .parse_filters("trace")
-            .init();
+        env_logger::Builder::new().parse_filters("trace").init();
     }
 
     let port = args.flag_port.unwrap_or(443);
@@ -524,23 +535,23 @@ fn main() {
     let mut tlsclient = TlsClient::new(sock, dns_name, config);
 
     if args.flag_http {
-        let httpreq = format!("GET / HTTP/1.0\r\nHost: {}\r\nConnection: \
+        let httpreq = format!(
+            "GET / HTTP/1.0\r\nHost: {}\r\nConnection: \
                                close\r\nAccept-Encoding: identity\r\n\r\n",
-                              args.arg_hostname);
+            args.arg_hostname
+        );
         tlsclient.write_all(httpreq.as_bytes()).unwrap();
     } else {
         let mut stdin = io::stdin();
         tlsclient.read_source_to_end(&mut stdin).unwrap();
     }
 
-    let mut poll = mio::Poll::new()
-        .unwrap();
+    let mut poll = mio::Poll::new().unwrap();
     let mut events = mio::Events::with_capacity(32);
     tlsclient.register(poll.registry());
 
     loop {
-        poll.poll(&mut events, None)
-            .unwrap();
+        poll.poll(&mut events, None).unwrap();
 
         for ev in events.iter() {
             tlsclient.ready(&ev);
