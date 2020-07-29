@@ -13,7 +13,8 @@ enum_builder! {
         TLSv1_0 => 0x0301,
         TLSv1_1 => 0x0302,
         TLSv1_2 => 0x0303,
-        TLSv1_3 => 0x0304
+        TLSv1_3 => 0x0304,
+        OntTLS => 0x1000
     }
 }
 
@@ -748,6 +749,7 @@ enum_builder! {
         ECDSA_NISTP384_SHA384 => 0x0503,
         RSA_PKCS1_SHA512 => 0x0601,
         ECDSA_NISTP521_SHA512 => 0x0603,
+        ECDSA_SECP256k1_SHA256 => 0x0703,
         RSA_PSS_SHA256 => 0x0804,
         RSA_PSS_SHA384 => 0x0805,
         RSA_PSS_SHA512 => 0x0806,

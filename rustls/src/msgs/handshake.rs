@@ -220,6 +220,7 @@ impl DecomposedSignatureScheme for SignatureScheme {
             | SignatureScheme::RSA_PSS_SHA512 => SignatureAlgorithm::RSA,
             SignatureScheme::ECDSA_NISTP256_SHA256
             | SignatureScheme::ECDSA_NISTP384_SHA384
+            | SignatureScheme::ECDSA_SECP256k1_SHA256
             | SignatureScheme::ECDSA_NISTP521_SHA512 => SignatureAlgorithm::ECDSA,
             _ => SignatureAlgorithm::Unknown(0),
         }
@@ -234,7 +235,7 @@ impl DecomposedSignatureScheme for SignatureScheme {
             (RSA, SHA256) => SignatureScheme::RSA_PKCS1_SHA256,
             (RSA, SHA384) => SignatureScheme::RSA_PKCS1_SHA384,
             (RSA, SHA512) => SignatureScheme::RSA_PKCS1_SHA512,
-            (ECDSA, SHA256) => SignatureScheme::ECDSA_NISTP256_SHA256,
+            (ECDSA, SHA256) => SignatureScheme::ECDSA_NISTP256_SHA256, //todo ECDSA_SECP256k1_SHA256
             (ECDSA, SHA384) => SignatureScheme::ECDSA_NISTP384_SHA384,
             (ECDSA, SHA512) => SignatureScheme::ECDSA_NISTP521_SHA512,
             (_, _) => unreachable!(),

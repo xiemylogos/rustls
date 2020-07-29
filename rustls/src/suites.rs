@@ -277,6 +277,7 @@ static TLS12_ECDSA_SCHEMES: &[SignatureScheme] = &[
     SignatureScheme::ECDSA_NISTP521_SHA512,
     SignatureScheme::ECDSA_NISTP384_SHA384,
     SignatureScheme::ECDSA_NISTP256_SHA256,
+    SignatureScheme::ECDSA_SECP256k1_SHA256,
 ];
 
 static TLS12_RSA_SCHEMES: &[SignatureScheme] = &[
